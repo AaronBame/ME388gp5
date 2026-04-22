@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 # BOL
 fuelmix_xc_BOL  = {
     'sigTr': 0.317, 
-    'sigA': 0.0738E-2, 
-    'nusigF': 0.0839E-2, 
+    'sigA': 7.38E-2, 
+    'nusigF': 8.39E-2, 
     'kapsigF': 1.19E-12
 }
 
@@ -71,7 +71,7 @@ class Reactor1D:
     def __init__(self, H, dx, P, rho_ihm,EOL,BOL):
         self.H = np.sum(H)
         self.dx = dx
-        self.Nx = int(self.H/dx)
+        self.Nx = int(self.H/dx)+1
         self.P = P
         self.rho_ihm = rho_ihm
         self.x=np.linspace(0,self.H,self.Nx)
@@ -86,18 +86,25 @@ class Reactor1D:
         self.history={'k': [], 'phi': [], 'Bt': []}
         
         # cross section vectors
-        self.sigA=np.array([fuelmix_xc_BOL['sigA']]*H[0]+
-                   [reflector_xs_BOL['sigA']]*H[1]+
-                   [shield_xs_BOL['sigA']]*H[2])
-        self.sigTr=np.array([fuelmix_xc_BOL['sigTr']]*H[0]+
-                   [reflector_xs_BOL['sigTr']]*H[1]+
-                   [shield_xs_BOL['sigTr']]*H[2])
-        self.nusigF=np.array([fuelmix_xc_BOL['nusigF']]*H[0]+
-                   [reflector_xs_BOL['nusigF']]*H[1]+
-                   [shield_xs_BOL['nusigF']]*H[2])
-        self.kapsigF=np.array([fuelmix_xc_BOL['kapsigF']]*H[0]+
-                   [reflector_xs_BOL['kapsigF']]*H[1]+
-                   [shield_xs_BOL['kapsigF']]*H[2])
+        self.sigA=np.zeros(self.Nx)
+        self.sigTr=np.zeros(self.Nx)
+        self.nusigF=np.zeros(self.Nx)
+        self.kapsigF=np.zeros(self.Nx)
+        
+        self.sigA[0:H[0]]=fuelmix_xc_BOL['sigA']
+        self.sigTr[0:H[0]]=fuelmix_xc_BOL['sigTr']
+        self.nusigF[0:H[0]]=fuelmix_xc_BOL['nusigF']
+        self.kapsigF[0:H[0]]=fuelmix_xc_BOL['kapsigF']
+        
+        self.sigA[H[0]:H[0]+H[1]]=reflector_xs_BOL['sigA']
+        self.sigTr[H[0]:H[0]+H[1]]=reflector_xs_BOL['sigTr']
+        self.nusigF[H[0]:H[0]+H[1]]=reflector_xs_BOL['nusigF']
+        self.kapsigF[H[0]:H[0]+H[1]]=reflector_xs_BOL['kapsigF']
+        
+        self.sigA[H[0]+H[1]:]=shield_xs_BOL['sigA']
+        self.sigTr[H[0]+H[1]:]=shield_xs_BOL['sigTr']
+        self.nusigF[H[0]+H[1]:]=shield_xs_BOL['nusigF']
+        self.kapsigF[H[0]+H[1]:]=shield_xs_BOL['kapsigF']
         
     def get_xs(self, H):
         self.sigA[:H[0]] = np.array([burnup(self.Bt[i], 'sigA') for i in range(H[0])])
@@ -155,7 +162,7 @@ def power_iteration(H,dx,D,sig_a,nu_sig_f,kap_sig_f,tol,P,boundary):
         kapsigFvec=kap_sig_f
     else:
         H_tot=H
-        N=int(H_tot/dx)
+        N=int(H_tot/dx+1)
         x=np.linspace(0,H,N)
         Dvec=np.full(N,D)
         sigavec=np.full(N,sig_a)
