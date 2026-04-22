@@ -71,7 +71,7 @@ class Reactor1D:
     def __init__(self, H, dx, P, rho_ihm,EOL,BOL):
         self.H = np.sum(H)
         self.dx = dx
-        self.Nx = int(self.H/dx) + 1
+        self.Nx = int(self.H/dx)
         self.P = P
         self.rho_ihm = rho_ihm
         self.x=np.linspace(0,self.H,self.Nx)
@@ -80,31 +80,33 @@ class Reactor1D:
         
         # State variables
         self.Bt = np.zeros(self.Nx)
+        self.Dt = np.zeros(self.Nx)
         self.phi = np.ones(self.Nx)
         self.k = 1.0
         self.history={'k': [], 'phi': [], 'Bt': []}
         
         # cross section vectors
-        self.sigA=([fuelmix_xc_BOL['sigA']]*H[0]+
+        self.sigA=np.array([fuelmix_xc_BOL['sigA']]*H[0]+
                    [reflector_xs_BOL['sigA']]*H[1]+
                    [shield_xs_BOL['sigA']]*H[2])
-        self.sigTr=([fuelmix_xc_BOL['sigTr']]*H[0]+
+        self.sigTr=np.array([fuelmix_xc_BOL['sigTr']]*H[0]+
                    [reflector_xs_BOL['sigTr']]*H[1]+
                    [shield_xs_BOL['sigTr']]*H[2])
-        self.nusigF=([fuelmix_xc_BOL['nusigF']]*H[0]+
+        self.nusigF=np.array([fuelmix_xc_BOL['nusigF']]*H[0]+
                    [reflector_xs_BOL['nusigF']]*H[1]+
                    [shield_xs_BOL['nusigF']]*H[2])
-        self.kapsigF=([fuelmix_xc_BOL['kapsigF']]*H[0]+
+        self.kapsigF=np.array([fuelmix_xc_BOL['kapsigF']]*H[0]+
                    [reflector_xs_BOL['kapsigF']]*H[1]+
                    [shield_xs_BOL['kapsigF']]*H[2])
         
-    def get_xs(self,H):
-        # burnup logic
-        self.sigA[:H[0]] = np.array([burnup(b, 'sigA') for b in range(H[0])])
-        self.sigTr[:H[0]] = np.array([burnup(b, 'sigTr') for b in range(H[0])])
-        self.nusigF[:H[0]]=np.array([burnup(b,'nusigF') for b in range(H[0])])
-        self.kapsigF[:H[0]]=np.array([burnup(b,'kapsigF') for b in range(H[0])])
-        self.Dt[:H[0]]=1/(3*self.sigTr)
+    def get_xs(self, H):
+        self.sigA[:H[0]] = np.array([burnup(self.Bt[i], 'sigA') for i in range(H[0])])
+        self.sigTr[:H[0]] = np.array([burnup(self.Bt[i], 'sigTr') for i in range(H[0])])
+        self.nusigF[:H[0]] = np.array([burnup(self.Bt[i], 'nusigF') for i in range(H[0])])
+        self.kapsigF[:H[0]] = np.array([burnup(self.Bt[i], 'kapsigF') for i in range(H[0])])
+
+
+        self.Dt = 1 / (3 * self.sigTr)
         
     def step(self, H, dt_days,tol=1E-6):
         self.get_xs(H)
@@ -153,7 +155,7 @@ def power_iteration(H,dx,D,sig_a,nu_sig_f,kap_sig_f,tol,P,boundary):
         kapsigFvec=kap_sig_f
     else:
         H_tot=H
-        N=int(H_tot/dx+1)
+        N=int(H_tot/dx)
         x=np.linspace(0,H,N)
         Dvec=np.full(N,D)
         sigavec=np.full(N,sig_a)
@@ -229,7 +231,7 @@ fuel=50
 Size=([fuel,reflector,shield])
 size_tot=sum(Size)
 dx=1
-B_EOL=36500e-6
+B_EOL=36500 # MWD/MTU
 B_BOL=0
 hw_reactor=Reactor1D(H=Size,dx=1,P=1.8e7,rho_ihm=9000,EOL=36500e-6,BOL=0)
 
@@ -247,9 +249,15 @@ for step in range(Nt):
 
 phi_BOL=hw_reactor.full_core('phi',0)
 phi_EOL=hw_reactor.full_core('phi',-1)
-x=np.linspace(-size_tot,size_tot,int(2*size_tot/dx+1))
+x=np.linspace(-size_tot,size_tot,len(phi_EOL))
 
 plt.plot(x,phi_BOL/np.max(phi_BOL),'r--',label="Beginning of Life Flux")
 plt.plot(x,phi_EOL/np.max(phi_EOL),'k-.',label="End of Life Flux")
+plt.axvline(x=fuel, color='gray',linestyle='--', label='Fuel Boundary')
+plt.axvline(x=fuel+reflector, color='gray', linestyle=':',label='Reflector Boundary')
+plt.axvline(x=-fuel, color='gray',linestyle='--')
+plt.axvline(x=-(fuel+reflector),color='gray',linestyle=':')
 plt.legend()
+plt.ylabel('Normalized Flux')
+plt.xlabel('Reactor Position [cm]')
 plt.show()
