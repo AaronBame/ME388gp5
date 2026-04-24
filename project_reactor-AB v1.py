@@ -202,6 +202,7 @@ def power_iteration(H,dx,D,sig_a,nu_sig_f,kap_sig_f,tol,P,boundary):
     while error>tol and i<1000:
         # Compute source term
         source=(nusigFvec*phi)/k_old
+
         source[0]=0.0 # Phi(BC)=0
         if boundary[1].lower()=='vacuum':
             source[-1]=0
@@ -257,6 +258,9 @@ for step in range(Nt):
 phi_BOL=hw_reactor.full_core('phi',0)
 phi_EOL=hw_reactor.full_core('phi',-1)
 x=np.linspace(-size_tot,size_tot,len(phi_EOL))
+
+phi_EOL = hw_reactor.full_core('phi', -1)
+print("Flux at outer boundary =", phi_EOL[-1])
 
 plt.plot(x,phi_BOL/np.max(phi_BOL),'r--',label="Beginning of Life Flux")
 plt.plot(x,phi_EOL/np.max(phi_EOL),'k-.',label="End of Life Flux")
