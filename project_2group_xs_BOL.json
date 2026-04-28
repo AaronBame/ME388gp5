@@ -11,8 +11,8 @@
     "group_2": "thermal; original MPACT groups 5-8"
   },
   "geometry_cm_half_core": {
-    "fuel": 10.0,
-    "reflector": 30.0,
+    "fuel": 120.0,
+    "reflector": 60.0,
     "shield": 100.0
   },
   "fuel": {
