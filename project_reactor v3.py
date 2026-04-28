@@ -19,7 +19,7 @@ import json
 #     'kapsigF': 1.19E-12
 # }
 
-with open(r'C:\Users\ab89774\Documents\Git Projects\ME388 Project\project_2group_xs_BOL.json','r') as f:
+with open('project_2group_xs_BOL.json','r') as f:
     data=json.load(f)
     
 fuel=data['fuel']
@@ -188,6 +188,22 @@ class Reactor1D:
         self.kapsigF_th[:H[0]] = np.array([burnup(self.Bt[i], 'kapsigF', 'thermal') for i in range(int(H[0]/self.dx))])
 
         self.Dt_th = 1 / (3 * self.sigTr_th)
+
+
+
+        control_abs_BOL = 0.0435
+        control_abs_EOL = 0.025
+
+        burn_frac = min(np.max(self.Bt) / B_EOL, 1.0)
+        control_abs_th = control_abs_BOL * (1 - burn_frac) + control_abs_EOL * burn_frac
+
+        ifuel = int(geo['fuel'] / self.dx)
+         
+        self.sigA_th[0:ifuel] += control_abs_th
+
+          
+
+        print("max sigA_th fuel =", np.max(self.sigA_th[0:ifuel]))
         
     def step(self, H, dt_days,tol=1E-6):
         self.get_xs(H)
