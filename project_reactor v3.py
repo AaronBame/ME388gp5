@@ -199,7 +199,7 @@ class Reactor1D:
 
         elif MODE == "operating":
          control_abs_BOL = 0.0435
-         control_abs_EOL = 0.025
+         control_abs_EOL = 0.0265
 
          burn_frac = min(np.max(self.Bt) / B_EOL, 1.0)
          control_abs_th = control_abs_BOL * (1 - burn_frac) + control_abs_EOL * burn_frac
