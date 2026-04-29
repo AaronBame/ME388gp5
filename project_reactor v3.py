@@ -152,6 +152,30 @@ class Reactor1D:
         self.kapsigF_th[:H[0]] = np.array([burnup(self.Bt[i], 'kapsigF', 'thermal') for i in range(int(H[0]/self.dx))])
 
         self.Dt_th = 1 / (3 * self.sigTr_th)
+
+
+
+        ifuel = int(geo['fuel'] / self.dx)
+
+        if MODE == "shutdown":
+              # Fully inserted controls
+         control_abs_th = 0.06 
+
+        elif MODE == "operating":
+         control_abs_BOL = 0.0435
+         control_abs_EOL = 0.0265
+
+         burn_frac = min(np.max(self.Bt) / B_EOL, 1.0)
+         control_abs_th = control_abs_BOL * (1 - burn_frac) + control_abs_EOL * burn_frac
+
+    
+         
+        self.sigA_th[0:ifuel] += control_abs_th
+
+          
+
+        print("max sigA_th fuel =", np.max(self.sigA_th[0:ifuel]))
+        
     
     # Run power iteration and burnup and save histories
     def step(self, H, dt_days,tol=1E-6):
@@ -318,6 +342,8 @@ B_EOL=36500 # MWD/MTU
 B_BOL=0
 B_rho=4.9725e-7 # MT/cm^3
 hw_reactor=Reactor1D(H=Size,dx=1,P=P_1D,rho_ihm=B_rho,EOL=B_EOL,BOL=0)
+MODE = "operating"
+
 
 T=15 # years
 dt=1 # year
