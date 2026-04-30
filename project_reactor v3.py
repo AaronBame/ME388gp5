@@ -11,78 +11,41 @@ import numpy as np
 import matplotlib.pyplot as plt
 import json
 
-# BOL
-# fuelmix_xc_BOL  = {
-#     'sigTr': 0.317, 
-#     'sigA': 7.38E-2, 
-#     'nusigF': 8.39E-2, 
-#     'kapsigF': 1.19E-12
-# }
-
-with open('project_2group_xs_BOL.json','r') as f:
-    data=json.load(f)
+# Load BOL cross sections
+with open(r'C:\Users\ab89774\Documents\Git Projects\ME388 Project\project_2group_xs_BOL.json','r') as f:
+    BOLdata=json.load(f)
     
-fuel=data['fuel']
-refl=data['reflector']
-shld=data['shield']
-geo=data['geometry_cm_half_core']
+BOLfuel=BOLdata['fuel']
+BOLrefl=BOLdata['reflector']
+BOLshld=BOLdata['shield']
+BOLgeo=BOLdata['geometry_cm_half_core']
 
-# EOL
-fuelmix_fast_EOL={
-    'sigTr': 0.84581,
-    'sigA':0.01249,
-    'nusigF': 0.00408,
-    'kapsigF': 0.31223,
-    'sigS12_fast_to_thermal': 0.0338324717451761}
 
-fuelmix_th_EOL = {
-    'sigTr': 2.04194,
-    'sigA': 0.08608,
-    'nusigF': 0.14107,
-    'kapsigF': 11.28578,
-    'sigS12_thermal_to_fast': 0}
+# Load EOL cross-sections    
+with open(r'C:\Users\ab89774\Documents\Git Projects\ME388 Project\project_2group_xs_EOL.json','r') as f:
+    EOLdata=json.load(f)
+    
+EOLfuel=EOLdata['fuel']
+EOLrefl=EOLdata['reflector']
+EOLshld=EOLdata['shield']
 
-reflector_fast_EOL = {
-    'sigTr': 0.31870373749771286,
-    'sigA': 0.00,
-    'nusigF': 0,
-    'kapsigF': 0,
-    'sigS12_fast_to_thermal': 0.0029790744275745673}
-
-reflector_th_EOL = {
-    'sigTr': 0.3846073042512662,
-    'sigA': 0.0,
-    'nusigF': 0,
-    'kapsigF': 0,
-    'sigS12_thermal_to_fast': 0}
-
-sheild_fast_EOL = {
-    'sigTr':0.6410438594515198,
-    'sigA': 0.05,
-    'nusigF': 0,
-    'kapsigF': 0,
-    'sigS12_fast_to_thermal': 0.005,}
-
-shield_th_EOL = {
-    'sigTr': 1.111,
-    'sigA':0.0002445175225956759,
-    'nusigF': 0,
-    'kapsigF': 0,
-    'sigS12_thermal_to_fast': 0.0021529822846500764}
-
+# Burnup interpolation
 # Assume only fuel is impacted by burnup
 def burnup(B_int,prop,speed):
 
-    if speed=="fast":
-        if prop=='sigS12_fast_to_thermal':
-            Sig_B=fuel[prop]
-            Sig_E=fuelmix_fast_EOL[prop]
+    if prop=="sigS12_fast_to_thermal":
+        if speed=="fast":
+            Sig_B=BOLfuel[prop]
+            Sig_E=EOLfuel[prop]
         else:
-            Sig_B=fuel[prop][0]
-            Sig_E=fuelmix_fast_EOL[prop]
+            Sig_B=0 # No up-scattering
+            Sig_E=0
+    elif speed=="fast":
+        Sig_B=BOLfuel[prop][0]
+        Sig_E=EOLfuel[prop][0]
     else:
-        Sig_B=fuel[prop][1]
-        Sig_E=fuelmix_th_EOL[prop]
+        Sig_B=BOLfuel[prop][1]
+        Sig_E=EOLfuel[prop][1]
 
     Sig_int=Sig_B+(Sig_E-Sig_B)/(B_EOL-B_BOL)*(B_int-B_BOL)
     return Sig_int
@@ -106,8 +69,8 @@ class Reactor1D:
         self.EOL=EOL
         self.BOL=BOL
         
-        ifuel=int(geo['fuel']/self.dx)
-        irefl=int((geo['fuel']+geo['reflector'])/self.dx)
+        ifuel=int(BOLgeo['fuel']/self.dx)
+        irefl=int((BOLgeo['fuel']+BOLgeo['reflector'])/self.dx)
         
         # State variables
         self.Bt = np.zeros(self.Nx)
@@ -135,44 +98,45 @@ class Reactor1D:
         self.kapsigF_th=np.zeros(self.Nx)
         
         # FAST Fuel Region
-        self.sigA_f[0:ifuel]=fuel['sigA'][0]
-        self.sigTr_f[0:ifuel]=fuel['sigTr'][0]
-        self.nusigF_f[0:ifuel]=fuel['nusigF'][0]
-        self.kapsigF_f[0:ifuel]=fuel['kapsigF'][0]
-        self.sigS12_f[0:ifuel]=fuel['sigS12_fast_to_thermal']
+        self.sigA_f[0:ifuel]=BOLfuel['sigA'][0]
+        self.sigTr_f[0:ifuel]=BOLfuel['sigTr'][0]
+        self.nusigF_f[0:ifuel]=BOLfuel['nusigF'][0]
+        self.kapsigF_f[0:ifuel]=BOLfuel['kapsigF'][0]
+        self.sigS12_f[0:ifuel]=BOLfuel['sigS12_fast_to_thermal']
         
         # THERMAL Fuel Region
-        self.sigA_th[0:ifuel]=fuel['sigA'][1]
-        self.sigTr_th[0:ifuel]=fuel['sigTr'][1]
-        self.nusigF_th[0:ifuel]=fuel['nusigF'][1]
-        self.kapsigF_th[0:ifuel]=fuel['kapsigF'][1]
+        self.sigA_th[0:ifuel]=BOLfuel['sigA'][1]
+        self.sigTr_th[0:ifuel]=BOLfuel['sigTr'][1]
+        self.nusigF_th[0:ifuel]=BOLfuel['nusigF'][1]
+        self.kapsigF_th[0:ifuel]=BOLfuel['kapsigF'][1]
         
         # FAST Reflector Region
-        self.sigA_f[ifuel:irefl]=refl['sigA'][0]
-        self.sigTr_f[ifuel:irefl]=refl['sigTr'][0]
-        self.nusigF_f[ifuel:irefl]=refl['nusigF'][0]
-        self.kapsigF_f[ifuel:irefl]=refl['kapsigF'][0]
-        self.sigS12_f[ifuel:irefl]=refl['sigS12_fast_to_thermal']
+        self.sigA_f[ifuel:irefl]=BOLrefl['sigA'][0]
+        self.sigTr_f[ifuel:irefl]=BOLrefl['sigTr'][0]
+        self.nusigF_f[ifuel:irefl]=BOLrefl['nusigF'][0]
+        self.kapsigF_f[ifuel:irefl]=BOLrefl['kapsigF'][0]
+        self.sigS12_f[ifuel:irefl]=BOLrefl['sigS12_fast_to_thermal']
         
         # THERMAL Reflector Region
-        self.sigA_th[ifuel:irefl]=refl['sigA'][1]
-        self.sigTr_th[ifuel:irefl]=refl['sigTr'][1]
-        self.nusigF_th[ifuel:irefl]=refl['nusigF'][1]
-        self.kapsigF_th[ifuel:irefl]=refl['kapsigF'][1]
+        self.sigA_th[ifuel:irefl]=BOLrefl['sigA'][1]
+        self.sigTr_th[ifuel:irefl]=BOLrefl['sigTr'][1]
+        self.nusigF_th[ifuel:irefl]=BOLrefl['nusigF'][1]
+        self.kapsigF_th[ifuel:irefl]=BOLrefl['kapsigF'][1]
         
         # FAST Shield Region
-        self.sigA_f[irefl:]=shld['sigA'][0]
-        self.sigTr_f[irefl:]=shld['sigTr'][0]
-        self.nusigF_f[irefl:]=shld['nusigF'][0]
-        self.kapsigF_f[irefl:]=shld['kapsigF'][0]
-        self.sigS12_f[irefl:]=shld['sigS12_fast_to_thermal']
+        self.sigA_f[irefl:]=BOLshld['sigA'][0]
+        self.sigTr_f[irefl:]=BOLshld['sigTr'][0]
+        self.nusigF_f[irefl:]=BOLshld['nusigF'][0]
+        self.kapsigF_f[irefl:]=BOLshld['kapsigF'][0]
+        self.sigS12_f[irefl:]=BOLshld['sigS12_fast_to_thermal']
         
         # THERMAL Shield Region
-        self.sigA_th[irefl:]=shld['sigA'][1]
-        self.sigTr_th[irefl:]=shld['sigTr'][1]
-        self.nusigF_th[irefl:]=shld['nusigF'][1]
-        self.kapsigF_th[irefl:]=shld['kapsigF'][1]
+        self.sigA_th[irefl:]=BOLshld['sigA'][1]
+        self.sigTr_th[irefl:]=BOLshld['sigTr'][1]
+        self.nusigF_th[irefl:]=BOLshld['nusigF'][1]
+        self.kapsigF_th[irefl:]=BOLshld['kapsigF'][1]
         
+    # Calculate cross-sections throught burnup interpolation
     def get_xs(self, H):
         self.sigA_f[:H[0]] = np.array([burnup(self.Bt[i], 'sigA', 'fast') for i in range(int(H[0]/self.dx))])
         self.sigTr_f[:H[0]] = np.array([burnup(self.Bt[i], 'sigTr', 'fast') for i in range(int(H[0]/self.dx))])
@@ -212,6 +176,8 @@ class Reactor1D:
 
         print("max sigA_th fuel =", np.max(self.sigA_th[0:ifuel]))
         
+    
+    # Run power iteration and burnup and save histories
     def step(self, H, dt_days,tol=1E-6):
         self.get_xs(H)
         self.sig_R_1=self.sigA_f+self.sigS12_f
@@ -233,6 +199,7 @@ class Reactor1D:
         self.history['phi_phys_th'].append(self.phi_phys_th.copy())
         pass
     
+    # reflect symmetric vectors
     def full_core(self,var,time_index=-1):
         half=self.history[var][time_index]
         full=np.concatenate((np.flip(half[1:]), half))
@@ -368,7 +335,7 @@ W=240 # Width of the reactor (240 Max)
 P_tot=1e6
 #P_1D=P_tot/(L*W) # No longer need this because one slice has to produce 1 MW
 P_1D=P_tot*10**(-4)
-Size=[int(geo['fuel']),int(geo['reflector']),int(geo['shield'])]
+Size=[int(BOLgeo['fuel']),int(BOLgeo['reflector']),int(BOLgeo['shield'])]
 size_tot=sum(Size)
 dx=0.2
 B_EOL=36500 # MWD/MTU
